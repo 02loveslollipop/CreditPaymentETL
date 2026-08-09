@@ -1,0 +1,133 @@
+# ==========================================
+# Data Science & Python .gitignore
+# ==========================================
+
+# --- Byte-compiled / Optimized / DLL files ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# --- Environments & Virtual Envs ---
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+.conda/
+bin/
+include/
+lib/
+lib64/
+share/
+pyvenv.cfg
+
+# --- Jupyter Notebooks & IPython ---
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+.ipython/
+profile_default/
+ipython_config.py
+
+# --- Datasets & Data Files ---
+# Data files should generally not be committed to Git repositories
+data/
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.parquet
+*.feather
+*.orc
+*.h5
+*.hdf5
+*.nwb
+*.db
+*.sqlite
+*.sqlite3
+
+# --- ML Models & Artifacts ---
+models/
+*.pkl
+*.pickle
+*.joblib
+*.npy
+*.npz
+*.pt
+*.pth
+*.onnx
+*.tflite
+*.pb
+*.h5
+*.ckpt
+*.safetensors
+
+# --- Experiment Tracking & Visualization ---
+mlruns/
+.wandb/
+wandb/
+runs/
+tensorboard/
+.dvc/cache/
+.dvc/tmp/
+
+# --- Environment Variables & Secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets.json
+
+# --- Distribution / Building ---
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- Unit Testing & Coverage ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# --- Logs & Temporary Files ---
+*.log
+logs/
+*.tmp
+*.temp
+*.swp
+*.bak
+
+# --- Operating System & Editor Files ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
