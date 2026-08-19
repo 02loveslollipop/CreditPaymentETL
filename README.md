@@ -21,19 +21,21 @@ PYTHON_ETL/
 │       └── config.json        every threshold, rule and semantic decision
 ├── ResultsReport.pdf          written report of the findings (IEEE format, Spanish)
 ├── ResultsPresentation.pptx   results deck; the commentary is in the speaker notes
-├── dataset.csv                source data — NOT in version control, see below
+├── dataset.csv                source extract the analysis is built on
 ├── requirements.txt           pinned dependencies
 ├── setup.sh / setup.ps1       create .venv and install
 └── README.md                  this file
 ```
 
-## Getting the data
+## The data
 
-`dataset.csv` is excluded by `.gitignore` (`*.csv`) and **nothing in this repository can
-regenerate it**. It is the file supplied with the technical test and must be placed at
-`PYTHON_ETL/dataset.csv` before anything will run. The expected format is declared in
-`config.json` under `read_csv`: semicolon-separated, `utf-8-sig`, comma as the decimal
-mark in `puntaje`, day-first dates.
+`dataset.csv` is the extract supplied with the technical test and is versioned with the
+repository: 10.763 rows, 23 columns, 1,4 MB. Nothing here can regenerate it, so keeping it
+alongside the code is what makes the notebook reproducible. Its format is declared in
+`config.json` under `read_csv`: semicolon-separated, `utf-8-sig`, comma as the decimal mark
+in `puntaje`, day-first dates. The `.gitignore` still excludes CSVs in general and carries
+an explicit exception for this one, so intermediate exports do not get committed by
+accident.
 
 ## Running it
 

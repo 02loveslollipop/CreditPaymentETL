@@ -35,6 +35,9 @@ ipython_config.py
 # Data files should generally not be committed to Git repositories
 data/
 *.csv
+# ...except the source extract this project is built on, which is small and is
+# needed to reproduce the notebook.
+!dataset.csv
 *.tsv
 *.xlsx
 *.xls

@@ -1,7 +1,7 @@
 {
   "project": "credit_payment_eda",
   "paths": {
-    "_comment": "raw_data is excluded from version control by .gitignore (*.csv). It is the source file supplied with the technical test and must be placed at PYTHON_ETL/dataset.csv before running the notebook; nothing in the pipeline can regenerate it.",
+    "_comment": "raw_data is the source extract supplied with the technical test, versioned alongside the code so the notebook is reproducible. Nothing in the pipeline can regenerate it.",
     "raw_data": "../../dataset.csv"
   },
   "read_csv": {
