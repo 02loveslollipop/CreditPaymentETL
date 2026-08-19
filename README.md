@@ -1,128 +1,184 @@
 # Credit & Payment Behaviour — exploratory data analysis
 
-Technical test for a Junior Data Scientist position. The deliverable is a single
-executable notebook that takes an undocumented credit portfolio from raw CSV to a set of
-findings about what can and cannot be modelled from it.
+A portfolio of **10,763 Colombian consumer loans** disbursed between November 2024 and
+April 2026, with a binary outcome for whether each loan was repaid on time. The default
+rate is **4.75%**, roughly one loan in twenty.
 
-The dataset arrives **without a data dictionary**, so a large part of the work is
-reconstructing what each column means — including two whose names turn out to be
-misleading, and one that cannot be used at all.
+The file arrives **without a data dictionary**, so the first job was not modelling but
+establishing what each column measures, which ones are trustworthy, and which ones do not
+mean what their names suggest. That turned out to be the substance of the work: the most
+predictive column in the file cannot be used, one column is denominated in units its name
+does not declare, and the signals that do survive are individually weak.
+
+📄 **[`ResultsReport.pdf`](ResultsReport.pdf)** — the full written report
+🖼 **[`ResultsPresentation.pptx`](ResultsPresentation.pptx)** — the results deck
 
 ---
 
-## Layout
+## 1 · `puntaje` is target leakage
+
+The internal score `puntaje` correlates with the outcome at **r₍pb₎ = 0.923**, where no
+other column in the file exceeds |ρ| = 0.11. That disproportion is a reason to audit it
+rather than celebrate it.
+
+![Distribution of puntaje by outcome](docs/figures/01_leakage_score_distribution.png)
+
+The two outcome classes **never touch**. The highest value among defaulted loans is 62.67
+and the lowest among loans repaid on time is 63.81, leaving an empty 1.14-point corridor
+that contains no loan of either class. Any threshold inside it reproduces the label for
+100% of the 10,763 rows — it is not one lucky cut but a corridor of equally perfect ones.
+On top of that, **87% of the portfolio sits on a single repeated value** and every one of
+those loans was repaid.
+
+The regulatory context explains how a column like this comes to exist. Colombian
+supervised entities must assess credit risk both at origination and across the life of the
+loan, so a warehouse routinely holds more than one score per loan, and a behavioural score
+is by construction a function of the outcome.
+
+## 2 · What a score that does *not* leak looks like
+
+The same chart for `puntaje_datacredito`, the DataCrédito Experian bureau score on its
+official 150–950 scale:
+
+![Distribution of the bureau score by outcome](docs/figures/19_bureau_score_by_outcome.png)
+
+Here the classes **overlap almost entirely** — defaults spread from 287 to 922, a range
+containing 99.7% of all scored loans. The defaulted distribution sits slightly to the
+left, which is where its ρ = +0.091 against the outcome comes from, but it is *contained
+within* the repaid distribution rather than separated from it.
+
+That contrast generalises beyond this dataset: **a score that predicts an outcome produces
+a gradient; a score that already knows it produces a wall.**
+
+## 3 · The two scores do not measure the same thing
+
+![puntaje against puntaje_datacredito](docs/figures/18_two_scores_against_each_other.png)
+
+The dashed line is where clients would fall if both instruments ranked the same risk across
+their declared scales. It is anchored on those scales rather than fitted to the sample, so
+it is a reference and not a model. No part of the cloud follows it: the two scores
+correlate at only **ρ = 0.118**. Among the 1,777 clients whose bureau score sits between
+790 and 810 — practically identical risk according to the bureau — `puntaje` takes every
+value between −21.9 and 95.2.
+
+## 4 · A column denominated in units its name does not declare
+
+![Unit proof](docs/figures/10_units_thousands_of_pesos.png)
+
+`saldo_total` has a median of 16,178 against a median declared salary of 3,000,000 COP.
+Read as pesos, the typical client — who holds five open obligations — would owe half a
+percent of one month's pay.
+
+The proof is internal. Isolating the **402 clients with exactly one open obligation**,
+their entire bureau balance must be the loan just granted them. As delivered,
+`capital_prestado / saldo_total` has a median of 1,338; divided by a thousand it becomes
+1.34, which is what an amortising balance should look like.
+
+| Quantity | As delivered | Corrected |
+|---|---|---|
+| Median total bureau debt | 16,178 COP | **16.2 M COP** |
+| …as a multiple of monthly salary | 0.005× | **5.4×** |
+| Median arrears when present | 236 COP | **236,000 COP** |
+
+That last row is why it matters: **236 pesos reads as a rounding residual, 236,000 reads as
+a genuine overdue amount.** The error produces no missing values and violates no range
+rule — it is only detectable by comparing magnitudes against what the domain expects.
+
+## 5 · Linear correlation alone would have discarded most of the file
+
+| Variable pair | *r* (linear) | *ρ* (rank) | Gap |
+|---|---|---|---|
+| `salario_cliente` × `saldo_total` | 0.005 | 0.445 | 0.441 |
+| `total_otros_prestamos` × `saldo_total` | 0.083 | 0.444 | 0.361 |
+| `salario_cliente` × `cuota_pactada` | 0.052 | 0.393 | 0.341 |
+
+Ten of the twelve largest gaps share this shape. The cause is a handful of declared
+salaries up to 22,000 million COP — unit errors, not wealthy clients — and Pearson, being
+computed on squared deviations, lets a dozen outliers dominate the coefficient entirely.
+
+## 6 · The signals that survive
+
+**Arrears already on the bureau file.** Clients carrying an overdue balance elsewhere
+default at **36.4% against 4.6%** — 7.7× the portfolio rate. It needs no model: the
+information is already on file at application time.
+
+![Default rate by prior arrears](docs/figures/13_arrears_default_rate.png)
+
+It fires on only 55 loans (0.51% of the book, 3.91% of all defaults), and that rarity is
+itself informative — negative bureau data persists for years under Ley 2157, so the
+originator is evidently *already* screening on this field.
+
+**Inquiry intensity.** Bureau inquiries per account actually opened: clients generating
+inquiries that are not converting into approvals are being refused credit elsewhere.
+
+![Default rate by inquiry intensity decile](docs/figures/15_inquiry_intensity_deciles.png)
+
+The top two deciles default at **7.8% against 2.8%** in the bottom three. DataCrédito
+states that inquiry footprints do not feed its score, which is why this variable carries
+information the bureau score cannot — the two correlate at only ρ = −0.18.
+
+## 7 · What the clean signals reach when combined
+
+![Review queue capture curve](docs/figures/17_review_queue_capture_curve.png)
+
+Four leakage-free signals converted to percentiles and averaged with equal weights separate
+the book from 1.9% to 11.2%. In operational terms, a manual review queue holding **2,153 of
+the 10,763 applications reaches 38% of all defaults** — about twice what random review
+would achieve.
+
+**This is not a model.** Four variables with equal weights, measured on the same sample
+that suggested them, with no train/test split and no calibration. The figure establishes
+that the opportunity is large enough to justify building a validated model; it is not a
+forecast.
+
+---
+
+## Limitations
+
+- **Population.** The median client holds five open obligations against two or fewer for
+  62% of the Colombian bureau population, and the median bureau score is 792. This is a
+  pre-screened, credit-experienced segment, so the weakness of the surviving signals may be
+  a consequence of that filter rather than a property of the variables.
+- **Incomplete bureau sectors.** The three sector columns sum to less than the account
+  total in 71% of rows, median shortfall two accounts. The missing one is almost certainly
+  telecommunications and fintech.
+- **Label definition.** How `Pago_atiempo` is defined, and when it becomes final, is
+  unknown. Whether the recent cohorts are usable depends on the answer.
+
+## Repository
 
 ```text
 PYTHON_ETL/
-├── etl_scripts/
-│   └── src/
-│       ├── development/
-│       │   └── eda.ipynb      the analysis, end to end
-│       └── config.json        every threshold, rule and semantic decision
-├── ResultsReport.pdf          written report of the findings (IEEE format, Spanish)
-├── ResultsPresentation.pptx   results deck; the commentary is in the speaker notes
-├── dataset.csv                source extract the analysis is built on
-├── requirements.txt           pinned dependencies
-├── setup.sh / setup.ps1       create .venv and install
-└── README.md                  this file
+├── etl_scripts/src/
+│   ├── development/eda.ipynb   the analysis, end to end
+│   └── config.json             every threshold, rule and semantic decision
+├── docs/figures/               figures used in this README
+├── dataset.csv                 source extract the analysis is built on
+├── ResultsReport.pdf           the written report
+├── ResultsPresentation.pptx    the results deck
+├── requirements.txt            pinned dependencies
+└── setup.sh / setup.ps1        create .venv and install
 ```
-
-## The data
-
-`dataset.csv` is the extract supplied with the technical test and is versioned with the
-repository: 10.763 rows, 23 columns, 1,4 MB. Nothing here can regenerate it, so keeping it
-alongside the code is what makes the notebook reproducible. Its format is declared in
-`config.json` under `read_csv`: semicolon-separated, `utf-8-sig`, comma as the decimal mark
-in `puntaje`, day-first dates. The `.gitignore` still excludes CSVs in general and carries
-an explicit exception for this one, so intermediate exports do not get committed by
-accident.
-
-## Running it
 
 ```bash
 ./setup.sh                       # or  .\setup.ps1  on Windows
 .venv/bin/python -m jupyter lab etl_scripts/src/development/eda.ipynb
 ```
 
-Run the notebook top to bottom from a clean kernel. It writes nothing to disk — every
-table and figure is an interactive cell output — so re-running a cell out of order is
-safe for everything except the ones that say otherwise in a comment.
-
-To execute it headlessly:
-
-```bash
-.venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace \
-    etl_scripts/src/development/eda.ipynb
-```
-
-## What the notebook covers
-
-| Section | Contents |
-|---|---|
-| 1 | Raw load with every column as text — no implicit coercion, so the file's own null representation stays visible |
-| 2 | Variable taxonomy, null standardisation, repair of contaminated values, typing, **unit normalisation**, structural consistency checks, range rules, column removal |
-| 3 | Univariate, bivariate and multivariate EDA — distributions, default rates by group, Pearson *and* Spearman correlation, scatter matrices |
-| 4 | Feature engineering candidates, ranked against the target |
-| 5 | The modelling frame and a data-quality summary |
-| 6 | The curated findings — the plots that carry the story |
-| 7 | Figure index |
-
-## The two deliverables at the root
-
-`ResultsReport.pdf` is the written report: the leakage finding, the unit error, the
-signals that survive and the limitations, with the figures and the external references.
-`ResultsPresentation.pptx` presents the same results visually — the slides carry the
-figures and the headline numbers, and every explanation lives in the speaker notes rather
-than on screen. Both are generated from the analysis in `eda.ipynb`; neither adds a
-finding that is not in the notebook.
-
-## `config.json` is the single source of truth
-
-No threshold is hard-coded in the notebook. The file carries:
-
-- **`validation_rules`** — the accepted range for every numeric column, re-checked on load.
-- **`unit_scale`** — the bureau balance columns arrive in *thousands* of COP while the loan
-  and income columns are in COP. The block records the factor, the affected columns and
-  the evidence for the correction.
-- **`column_semantics`** — meanings that are not obvious from the names and that change
-  how a feature must be built. Notably `total_otros_prestamos`, which is a self-declared
-  **monthly payment**, not an outstanding balance.
-- **`sentinels`** — numbers that stand for "no information": `puntaje_datacredito == 0`
-  means *not scored*, not a score of zero.
-- **`leakage_columns`** — see below.
-- **`domain_reference`** — the published Colombian market values the rules were checked
-  against (bureau score scale, usury caps, minimum wage, debt-service convention).
-
-Changing a threshold means editing this file, not the notebook.
-
-## The one thing to know before reusing this data
-
-**`puntaje` is target leakage and is excluded from modelling.** The highest value among
-defaulted loans is 62.67; the lowest among loans paid on time is 63.81. A single threshold
-reproduces the label for 100% of the 10,763 rows. 87% of the portfolio sits on one
-repeated value and every one of those loans paid on time.
-
-The column is **deliberately kept in the dataset** so that section 3.2.1 can demonstrate
-the problem rather than quietly hide it. It is listed in `config.json` under
-`leakage_columns`, excluded from every feature ranking, and section 5.1 asserts that it
-never reaches the modelling frame.
-
-Leakage also propagates: a data-quality feature counting range-rule violations initially
-looked like the strongest signal in the project until it turned out one of the rules
-bounds `puntaje`, and every row violating it is a default. Anything derived from a leaking
-column has to be audited too.
+**No threshold is hard-coded in the notebook.** `config.json` carries the validation rules,
+the `unit_scale` block behind finding 4, the sentinel values that stand for "no
+information", the leakage declaration, and the published Colombian reference values the
+rules were checked against. Changing a threshold means editing that file.
 
 ## Notes for whoever picks this up
 
-- The target is imbalanced at 4.75% positives. Predicting "paid on time" for everyone
-  already scores 95.25% accuracy, so use PR-AUC or recall at fixed precision.
-- **Split by `fecha_prestamo`, not at random.** Recent cohorts have not had time to
-  mature, and a random split leaks future cohorts into training.
-- `saldo_total` and `saldo_principal` correlate at ρ = 0.95 and are identical in 84% of
+- The target is imbalanced at 4.75% positives. Use PR-AUC or recall at fixed precision —
+  predicting the majority class already scores 95.25% accuracy.
+- **Split by `fecha_prestamo`, not at random.** Recent cohorts have not had time to mature.
+- **Exclude `puntaje` and everything derived from it.** Leakage propagates: a rule-violation
+  counter built as an ordinary derived feature scored ρ = −0.287 until it turned out one of
+  the rules bounds `puntaje` and every row violating it is a default. Rebuilt from clean
+  rules it falls to −0.008. Section 5.1 of the notebook now asserts that no leakage column
+  reaches the modelling frame rather than merely printing that it was excluded.
+- `saldo_total` and `saldo_principal` correlate at ρ = 0.946 and are identical in 84% of
   rows; keep one plus the interest difference.
-- Rank-based statistics are used throughout for screening. Pearson is reported alongside
-  Spearman rather than instead of it — on several pairs the two disagree completely, and
-  the disagreement is itself a finding.
-
-The notebook is committed **with its outputs**: the stored figures and tables are the
-deliverable, not a build artefact.
