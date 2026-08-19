@@ -1,1 +1,11 @@
-# THIS FILE IS LEFT EMPTY ON PURPOSE.
+# Verified against the versions on the right; the upper bounds keep a future major
+# release from changing behaviour silently. pandas in particular: this pipeline
+# relies on Categorical/NaN handling that differs between 2.x and 3.x, so the code
+# avoids astype(str) on columns that carry nulls (see section 6.B5 of the notebook).
+pandas>=2.2,<4          # tested on 3.0.5
+numpy>=1.26,<3          # tested on 2.5.2
+scipy>=1.11,<2          # tested on 1.18.0
+matplotlib>=3.8,<4      # tested on 3.11.1
+seaborn>=0.13,<0.15     # tested on 0.13.2
+ipykernel>=6.29,<7
+jupyter>=1.0,<2
