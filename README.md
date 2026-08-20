@@ -69,10 +69,11 @@ value between −21.9 and 95.2.
 Read as pesos, the typical client — who holds five open obligations — would owe half a
 percent of one month's pay.
 
-The proof is internal. Isolating the **402 clients with exactly one open obligation**,
-their entire bureau balance must be the loan just granted them. As delivered,
-`capital_prestado / saldo_total` has a median of 1,338; divided by a thousand it becomes
-1.34, which is what an amortising balance should look like.
+The proof is internal. Of the 636 clients with exactly one open obligation, **402 also
+carry a positive balance** — their entire bureau balance must be the loan just granted
+them. As delivered, `capital_prestado / saldo_total` has a median of 1,338; divided by a
+thousand it becomes 1.34, leaving the outstanding balance at 74.7% of the original
+principal, which is what a part-amortised loan should look like.
 
 | Quantity | As delivered | Corrected |
 |---|---|---|
@@ -92,7 +93,7 @@ rule — it is only detectable by comparing magnitudes against what the domain e
 | `total_otros_prestamos` × `saldo_total` | 0.083 | 0.444 | 0.361 |
 | `salario_cliente` × `cuota_pactada` | 0.052 | 0.393 | 0.341 |
 
-Ten of the twelve largest gaps share this shape. The cause is a handful of declared
+Eleven of the twelve largest gaps share this shape. The cause is a handful of declared
 salaries up to 22,000 million COP — unit errors, not wealthy clients — and Pearson, being
 computed on squared deviations, lets a dozen outliers dominate the coefficient entirely.
 
@@ -122,7 +123,9 @@ information the bureau score cannot — the two correlate at only ρ = −0.18.
 ![Review queue capture curve](docs/figures/17_review_queue_capture_curve.png)
 
 Four leakage-free signals converted to percentiles and averaged with equal weights separate
-the book from 1.9% to 11.2%. In operational terms, a manual review queue holding **2,153 of
+the book from 2.5% to 11.9%. Each client is scored on whatever components they actually
+have; filling the gaps with a neutral value would be an imputation, and would have touched
+2,948 of the 10,763 rows. In operational terms, a manual review queue holding **2,153 of
 the 10,763 applications reaches 38% of all defaults** — about twice what random review
 would achieve.
 
@@ -182,3 +185,11 @@ rules were checked against. Changing a threshold means editing that file.
   reaches the modelling frame rather than merely printing that it was excluded.
 - `saldo_total` and `saldo_principal` correlate at ρ = 0.946 and are identical in 84% of
   rows; keep one plus the interest difference.
+- **Nothing is imputed.** The notebook turns disguised unknowns *into* nulls — null tokens,
+  the not-scored sentinel, the 58 trend labels that arrived as numbers — and then leaves
+  them null. Out-of-range values are counted and flagged, never patched. Choosing a fill
+  strategy is a modelling decision that needs a training split to be validated on, so it
+  belongs downstream; doing it during the EDA would bake an untested assumption into every
+  statistic in this file. The two places where it would have mattered most are called out
+  where they occur: the arrears rule (missing bureau balance ≠ no arrears) and the combined
+  score (each client is ranked on the components they actually have).
